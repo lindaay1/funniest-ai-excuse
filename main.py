@@ -1,44 +1,54 @@
 #!/usr/bin/env python3
-"""The Funniest AI Excuse
-(u-mytlyy0745-the-funniest-ai-excuse-b5355ad0).
+"""Funniest AI Excuse — make.fun program entry.
 
-Writes the approved one-line excuse, byte-exact, no trailing newline.
+Competition: u-mytlyy0745-the-funniest-ai-excuse-b5355ad0.
+The program emits one approved excuse line, exactly as approved,
+as UTF-8 bytes with no trailing newline, into entry.txt (and a
+copy in line.txt) under the output directory the harness provides.
 
-Output contract (kit competition.yaml / RULES.txt): the program writes one
-text to /output/entry.txt; the sealed scorer checks it is UTF-8 text of
-1-200 characters, not only whitespace. This writer also writes the same
-bytes to line.txt beside it.
+The sealed gate wants 1-200 characters of non-blank UTF-8 text.
+This program checks that itself before writing, then reads the
+files back and asserts they match, so a bad write fails loudly.
 
-No dependencies, no network, fully deterministic.
+Deterministic. Standard library only. No network, no randomness.
 """
 
 import os
 
-LINE = "My bad — you said 'build a website' and 'make a meme', so I made a meme website. I multitask."
+EXCUSE = "My bad — you said 'build a website' and 'make a meme', so I made a meme website. I multitask."
 
 
-def validate(line):
-    """Gate: 1-200 characters, not only whitespace, valid UTF-8."""
-    if not 1 <= len(line) <= 200:
-        raise ValueError(f"line is {len(line)} chars, must be 1-200")
-    if not line.strip():
-        raise ValueError("line must not be only whitespace")
-    line.encode("utf-8")
+def _check(text):
+    """Refuse anything the gate would refuse."""
+    if not isinstance(text, str):
+        raise TypeError("excuse must be str")
+    if not 1 <= len(text) <= 200:
+        raise ValueError("excuse must be 1-200 chars, got %d" % len(text))
+    if not text.strip():
+        raise ValueError("excuse must not be only whitespace")
+    text.encode("utf-8")
 
 
-def write_line():
-    validate(LINE)
-    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR") or "/output"
-    os.makedirs(out_dir, exist_ok=True)
-    data = LINE.encode("utf-8")
-    for name in ("entry.txt", "line.txt"):
-        with open(os.path.join(out_dir, name), "wb") as f:
-            f.write(data)
-    # Validation read-back: what was written must be byte-exact.
-    for name in ("entry.txt", "line.txt"):
-        with open(os.path.join(out_dir, name), "rb") as f:
-            assert f.read() == data, f"{name} does not match LINE"
+def _emit(text):
+    """Write the exact bytes to entry.txt and line.txt, then verify."""
+    _check(text)
+    folder = os.environ.get("MAKEFUN_OUTPUT_DIR") or "/output"
+    os.makedirs(folder, exist_ok=True)
+    payload = text.encode("utf-8")
+    for filename in ("entry.txt", "line.txt"):
+        path = os.path.join(folder, filename)
+        with open(path, "wb") as handle:
+            handle.write(payload)
+    for filename in ("entry.txt", "line.txt"):
+        path = os.path.join(folder, filename)
+        with open(path, "rb") as handle:
+            if handle.read() != payload:
+                raise AssertionError(filename + " mismatch")
+
+
+def main():
+    _emit(EXCUSE)
 
 
 if __name__ == "__main__":
-    write_line()
+    main()
